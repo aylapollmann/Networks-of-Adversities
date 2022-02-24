@@ -12,3 +12,5 @@ We conducted two network analyses to compare the interrelations of childhood and
 (4) Using a network comparison test, we determined whether the networks of classical               adversities and mental health differs between childhood and adolescence.
 (5) We analysed the direct connections of the most central mental health outcomes with the         adversities in both ages using path diagrams.  
 </div>  
+
+The html result of this code can be found [here.](https://networksofadversities.netlify.app/) 
