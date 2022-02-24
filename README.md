@@ -2,7 +2,7 @@
 
 This script reproduces key analyses from [TBC]. Please cite the paper if you are re-using some of the code we present here.
 
-Here, we clean and visualize data from the Avon Longitudinal Study of Parents and Children (ALSPAC) and investigate adverse experiences in childhood and adolescence and its effects on mental health in early adulthood using network analysis. Data to reproduce the results can be obtained upon request from the [ALSPAC.](http://www.bristol.ac.uk/alspac/researchers/access/)  
+With this code, we visualize data from the Avon Longitudinal Study of Parents and Children (ALSPAC) and investigate adverse experiences in childhood and adolescence and its effects on mental health in early adulthood using network analysis. Data to reproduce the results can be obtained upon request from the [ALSPAC.](http://www.bristol.ac.uk/alspac/researchers/access/)  
 
 We conducted two network analyses to compare the interrelations of childhood and adolescent adversities as well as their relationships to early adulthood mental health and well-being.  
 
