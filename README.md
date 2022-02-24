@@ -6,11 +6,11 @@ Here, we clean and visualize data from the Avon Longitudinal Study of Parents an
 
 We conducted two network analyses to compare the interrelations of childhood and adolescent adversities as well as their relationships to early adulthood mental health and well-being.  
 
-* (1) We determined whether adversity clusters can be detected. 
-* (2) We assessed node strength centrality in the childhood and adolescence networks. 
-* (3) We calculated which nodes function as "bridges" connecting adversity clusters with             mental  health issues.
-* (4) Using a network comparison test, we determined whether the networks of classical               adversities and mental health differs between childhood and adolescence.
-* (5) We analysed the direct connections of the most central mental health outcomes with the         adversities in both ages using path diagrams.  
+* We determined whether adversity clusters can be detected. 
+* We assessed node strength centrality in the childhood and adolescence networks. 
+* We calculated which nodes function as "bridges" connecting adversity clusters with             mental  health issues.
+* Using a network comparison test, we determined whether the networks of classical               adversities and mental health differs between childhood and adolescence.
+* We analysed the direct connections of the most central mental health outcomes with the         adversities in both ages using path diagrams.  
 </div>  
 
 The html result of this code can be found [here.](https://networksofadversities.netlify.app/) 
