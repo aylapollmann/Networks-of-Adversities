@@ -1,0 +1,381 @@
+---
+title: "Networks of Adversity in Childhood and Adolescence"
+author: "Ayla Pollmann"
+date: "26/03/2021"
+output: 
+  html_document:
+    toc: true 
+    toc_depth: 3
+    number_sections: true 
+    theme: yeti     
+---
+***
+<div align="center">
+*References are linked throughout the text*
+</div>
+***
+
+# **Introduction**  
+  
+  
+<div align="justify">
+This script reproduces key analyses from [TBC]. Please cite the paper if you are re-using some of the code below.
+
+Here, we clean and visualize data from the Avon Longitudinal Study of Parents and Children (ALSPAC) and investigate adverse experiences in childhood and adolescence and its effects on mental health in early adulthood using network analysis. Data to reproduce the results can be obtained upon request from the [ALSPAC.](http://www.bristol.ac.uk/alspac/researchers/access/)  
+
+We conducted two network analyses to compare the interrelations of childhood and adolescent adversities as well as their relationships to early adulthood mental health and well-being.  
+
+(1) We determined whether adversity clusters can be detected. 
+(2) We assessed node strength centrality in the childhood and adolescence networks. 
+(3) We calculated which nodes function as "bridges" connecting adversity clusters with             mental  health issues.
+(4) Using a network comparison test, we determined whether the networks of classical               adversities and mental health differs between childhood and adolescence.
+(5) We analysed the direct connections of the most central mental health outcomes with the         adversities in both ages using path diagrams.  
+</div>  
+
+Packages used in this code include: [knitr](https://cran.r-project.org/web/packages/knitr/index.html), [tidyverse](https://cran.r-project.org/web/packages/tidyverse/index.html), [qgraph](https://cran.r-project.org/web/packages/qgraph/qgraph.pdf), [bootnet](https://cran.r-project.org/web/packages/bootnet/index.html), [lavaan](https://cran.r-project.org/web/packages/lavaan/index.html), [glasso](https://cran.r-project.org/web/packages/glasso/index.html), [dplyr](https://cran.r-project.org/web/packages/dplyr/index.html), [EGAnet](https://cran.r-project.org/web/packages/EGAnet/index.html) and [hfgolino/EGA](https://github.com/hfgolino/EGAnet), [NetworkComparisonTest](https://cran.r-project.org/web/packages/NetworkComparisonTest/NetworkComparisonTest.pdf), [networktools](https://cran.r-project.org/web/packages/networktools/index.html)  
+
+***
+
+```{r defaults, cache=FALSE, include = FALSE}
+#install.packages('knitr')
+#install.packages('tidyverse')
+#install.packages("qgraph")
+#install.packages("bootnet")
+#install.packages("lavaan")
+#install.packages("glasso")
+#install.packages("dplyr")
+#install_github('hfgolino/EGA', force = TRUE)
+library("devtools")
+library("EGAnet")
+library("dplyr")
+library("tidyr")
+library("bootnet")
+library("qgraph")
+library("ggplot2")
+library("psychTools")
+library("NetworkComparisonTest")
+library("viridis")
+library("networktools")
+require(psych)
+knitr::opts_chunk$set(warning=F)
+set.seed(260321)
+options(width = 120, digits = 3)
+Sys.setenv(LANG = "en")
+packages <- c("tidyverse", "foreign", "magrittr")
+invisible(lapply(packages, library, character.only = TRUE))
+rm(packages)
+```
+
+# **Adverse Childhood Experiences (ACEs)**
+## ACEs Network Clustering  
+
+Please refer to this [tutorial by E. Fried](https://psych-networks.com/r-tutorial-identify-communities-items-networks/) on clustering methods in network analysis and this paper by [Golino & Epskamp (2017)](https://psycnet.apa.org/record/2017-35840-001) specifically on the EGA algorithm.  
+
+```{r network of classical ACEs, fig.show='hide', message = FALSE, warning = FALSE}  
+#clustering
+EGAClaACE<-EGA(FinalData[1:10], plot.EGA = TRUE, corr = c("spearman"), model = c("glasso"), algorithm = c("walktrap"), plot.type = c("qgraph"))
+EGAClaACE$dim.variables
+```
+
+## The ACEs Network  
+
+Bootnet allows to estimate and bootstrap networks based on the Gaussian graphical model and visualized in qgraph. Please refer to [Epskamp et al. (2018)](https://link.springer.com/article/10.3758/s13428-017-0862-1). To visualize the network, we are using the colorblind-friendly colormap ["viridis".](https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html)  
+
+```{r network of ACEs with Mental Health Issues, fig.cap= "Figure: The ACEs Network", message = FALSE, warning = FALSE, collapse=TRUE, results='hide'}
+#adaption of ACE data
+ACEData <- dplyr::select(FinalData, 1:10,33:39)
+colnames(ACEData) <- c("1","2","3","4","5","6","7","8","9", "10","11","12","13","14","15","16","17")
+Groups <- c(rep("1. Cluster - Direkt Abuse",5),rep("2. Cluster - Family Factors",5), rep("Mental Health",5), rep("Wellbeing Factors",2))
+
+nodeNamesACEB <- c(nodeNames <- c("Physical Abuse inside of Family","Physical Abuse outside of Family","Mental Abuse inside of Family", "Mental Abuse outside of Family", "Sexual Abuse", "Substance Abuse by Mother","Substance Abuse by Mother's Partner","Abuse of Mother", "Criminality of Carer", "Psychopathology of Carer", "Bipolar Disorder", "Depression", "Chronic Fatigue Syndrom","Alcohol Use Disorder","Drug Use", "Happiness","Life Satisfaction"))
+
+#stepwise model estimation
+NetworkACEMH<- estimateNetwork(ACEData, default = "ggmModSelect", corMethod = "spearman")
+plot(NetworkACEMH, groups = Groups, nodeNames = nodeNamesACEB, legend.cex = 0.4, layoutScale = c(0.7,0.7), posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#440154FF", "#21908CFF","#3B528BFF", "#5DC863FF", "#9FDA3AFF"), border.color = "white",border.width = 2, label.color = "white", vsize = 7,curve = 0.1, curveAll = T)
+centralityPlot(NetworkACEMH, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+```
+
+```{r, sensitivity check ACE, include=FALSE}
+### sensitivity check
+NetworkACEMHEBIC<- estimateNetwork(ACEData, default = "EBICglasso", corMethod = "spearman")
+plot(NetworkACEMHEBIC, groups = Groups, nodeNames = nodeNamesACEB, legend.cex = 0.35, layoutScale = c(0.9,0.9), posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#440154FF", "#3B528BFF", "#21908CFF", "#5DC863FF", "#9FDA3AFF"), border.color = "white",border.width = 2, label.color = "white", vsize = 7,curve = 0.1, curveAll = T)
+centralityPlot(NetworkACEMHEBIC, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+```
+
+## Determining Bridges between ACE Clusters  
+
+We calculate bridge nodes/centrality using bridge strength. Bridge strength refers to the sum of the absolute value of all edges between a node of a cluster to all the nodes of the opposing cluster. Please refer to [networktools](https://www.researchgate.net/publication/316279813_networktools_Assorted_Tools_for_Identifying_Important_Nodes_in_Networks), [Jones et al. (2019)](https://pubmed.ncbi.nlm.nih.gov/31179765/) and [Vanzulah (2017)](http://www.louisvilleeatlab.com/uploads/1/1/7/6/11768007/network_analysis_talk_final_.pdf).
+
+```{r bridge ACEs, results='hide', fig.show='hide'}
+ACEedges <- getWmat(NetworkACEMH)
+write.csv(ACEedges, "ACEedges.csv")
+
+ACEedgeplot <- plot(NetworkACEMH, groups = Groups, nodeNames = nodeNamesACEB, legend.cex = 0.3, layoutScale = c(0.8,0.8), posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#440154FF", "#3B528BFF", "#21908CFF", "#5DC863FF", "#9FDA3AFF"), border.color = "white",border.width = 2, label.color = "white", vsize = 7,curve = 0.1, curveAll = T)
+
+ACEbridge <- bridge(ACEedgeplot, communities = c('1','1','1','1','1','1','1','1','1','1','2','2','2','2','2','2','2'), useCommunities = "all", directed = NULL, nodes = NULL)
+
+pdf("bridgecentralityACE.pdf", width = 5)
+plot(ACEbridge, include = "Bridge Strength")
+dev.off()
+```
+
+```{r Bridge ACEs highlighted,message = FALSE, warning = FALSE, collapse=TRUE, results='hide', fig.cap= "Figure: The ACEs Network - Bridge"}
+#Bridge highlighted
+Groups5 <- c(rep("ACEs Cluster",2),
+             rep("1. Bridge Nodes of ACEs Cluster:
+                  3: Mental Abuse inside of Family,
+                  4: Mental Abuse outside of Family,
+                  7: Substance Abuse by Mother's Partner", 2),
+             rep("ACEs Cluster",2), 
+             rep("1. Bridge Nodes of ACEs Cluster:
+                  3: Mental Abuse inside of Family,
+                  4: Mental Abuse outside of Family,
+                  7: Substance Abuse by Mother's Partner",1),
+             rep("ACEs Cluster",3), 
+             rep("Mental Health and Wellbeing Cluster",1), 
+             rep("2. Bridge Nodes of Mental Health Cluster:
+                 12: Depression,
+                 15: Drug Use,
+                 17: Life Satisfaction",1),
+             rep("Mental Health and Wellbeing Cluster",2), 
+             rep("2. Bridge Nodes of Mental Health Cluster:
+                 12: Depression,
+                 15: Drug Use,
+                 17: Life Satisfaction",1), 
+             rep("Mental Health and Wellbeing Cluster",1), 
+             rep("2. Bridge Nodes of Mental Health Cluster:
+                 12: Depression,
+                 15: Drug Use,
+                 17: Life Satisfaction",1))
+
+NetworkACEMH6<- estimateNetwork(ACEData, default = "ggmModSelect", corMethod = "spearman")
+plot(NetworkACEMH6, legend.cex = 0.36, groups = Groups5, layoutScale = c(0.75,0.75), posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#21908CFF","#5DC863FF","snow4","snow3"),border.color = "white",border.width = 2, label.color = "white", vsize = 7,curve = 0.1, curveAll = T)
+```
+
+## Bootstrapping ACEs Network  
+
+**Bootstrapping & structure stability:**  
+
+* *Bootstrapping*: Repeatedly constructing CIs, show accuracy of edge-weight estimates & compare edges to one-another.  
+
+* *Correlation stability coefficient (CS-coefficient)*: Quantify the stability of centrality indices using subset bootstraps.  
+
+For more information, please refer to [Epskamp et al. (2018).](https://link.springer.com/article/10.3758/s13428-017-0862-1)
+
+```{r bootstrapping ACE, cache=TRUE, message= FALSE,warning = FALSE, collapse=TRUE, results='hide'}
+BNetworkACEs<- bootnet(NetworkACEMH, default = "ggmModSelect", nBoots = 2000, nCores = 8)
+```
+
+```{r bootstrapping ACE 2}
+plot(BNetworkACEs, order = "sample", labels = FALSE)
+```
+
+```{r Stability, cache=TRUE, message= FALSE}
+B2NetworkACEs<- bootnet(NetworkACEMH, default = "ggmModSelect", type = ("case"), nBoots = 2000, nCores = 8, statistics = c("edge", "strength", "betweenness", "closeness","expectedInfluence"))
+```
+
+```{r Stability 2}
+plot(B2NetworkACEs, statistics = c("strength", "closeness","betweenness", "expectedInfluence"))
+corStabNetworkACEs<- corStability(B2NetworkACEs, cor = 0.7)
+```
+
+***
+
+# **Adverse Adolescent Experiences (AAEs)**
+## AAEs Network Clustering
+```{r network AAE,fig.show='hide', message = FALSE, warning = FALSE}
+ClaAAEDataA <- dplyr::select(FinalData, 10:32)
+colnames(ClaAAEDataA) <- c("9","1","2","3","4","5","6","7","8","10","11","12","13","14","15","16","17","18","19","20","21","22","23")
+order2 <- c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23")  
+
+ClaAAEData <- ClaAAEDataA[, order2]
+
+EGAClaAAE<-EGA(ClaAAEData, plot.EGA = TRUE, corr = c("spearman"), model = c("glasso"), algorithm = c("walktrap"), plot.type = c("qgraph"))
+EGAClaAAE$dim.variables
+```
+
+## The AAEs Network
+```{r network AAE with Mental Health, message = FALSE, warning = FALSE, collapse=TRUE, results='hide', fig.cap= "Figure: The AAEs Network"}
+AAEDataC <- dplyr::select(FinalData,10:39)
+colnames(AAEDataC) <- c("9","1","2","3","4","5","6","7","8","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30")
+#order according to clusters
+order3 <- c("1","2","3","4","5","10","12","21","23","7","8","9","11","13","19","20","22","14","16","17","18","6","15","24","25","26","27","28","29","30")  
+AAEDataMH <- AAEDataC[, order3]
+
+nodeNamesAAEs <- c("Physical Abuse inside of Family","Physical Abuse outside of Family","Mental Abuse inside of Family","Mental Abuse outside of Family","Sexual Abuse","Conflicts with Parents","Trouble with Police","Abuse by Romantic Partner","Occupational Issues", "Abuse of Mother","Criminality of Carer","Carer Psychopathology","Divorce of Parents","Health Issues","Experience of Life/Death Situation","Housing Issues","Death to Close Contact","Educational Issues","Being Bullied","Feeling Lonely","Number of Friends", "Carer Substance Abuse","Teenager became Parent","Bipolar Disorder", "Depression", "Chronic Fatigue Syndrom","Alcohol Use Disorder","Drug Use", "Happiness","Life Satisfaction")
+
+Groups2 <- c(rep("1. Cluster - Direkt Abuse",9),rep("2. Cluster - Family Factors",8),rep("3. Cluster - Educational and Social Factors",4),rep("4. No cluster",1), rep("5. No cluster",1), rep("Mental Health",5), rep("Wellbeing Factors",2))
+
+NetworkAAEMH<- estimateNetwork(AAEDataMH, default = "ggmModSelect", corMethod = "spearman")
+plot(NetworkAAEMH, groups = Groups2, nodeNames = nodeNamesAAEs, legend.cex = 0.25, posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 8, color = c("#440154FF","#31688EFF", "#26828EFF", "snow3", "snow3", "#6DCD59FF", "#B4DE2CFF"), border.color = "white",border.width = 2, label.color = "white")
+centralityPlot(NetworkAAEMH, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+```
+```{r sensitivity check AAEs, include=FALSE}
+#sensitivity check
+NetworkAAEMHEBIC<- estimateNetwork(AAEDataMH, default = "EBICglasso", corMethod = "spearman")
+plot(NetworkAAEMHEBIC, groups = Groups2, nodeNames = nodeNamesAAEs, legend.cex = 0.25, posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 8, color = c("#440154FF", "#443A83FF", "#31688EFF", "#21908CFF", "#35B779FF", "#8FD744FF"), border.color = "white",border.width = 2, label.color = "white")
+centralityPlot(NetworkAAEMHEBIC, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+```
+
+## Determining Bridges between AAE Clusters
+```{r edges AAE, message = FALSE, warning = FALSE, results = "hide", fig.show='hide'}
+AAEedges <- getWmat(NetworkAAEMH)
+write.csv(AAEedges, "AAEedges.csv")
+
+AAEedgeplot <- plot(NetworkAAEMH,layoutScale = c(0.9,0.9), posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#440154FF", "#3B528BFF", "#21908CFF", "#5DC863FF", "#9FDA3AFF"),vsize = 7)
+
+AAEbridge <- bridge(AAEedgeplot, communities = c('1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','1','2','2','2','2','2','2','2'), useCommunities = "all", directed = NULL, nodes = NULL)
+
+pdf("bridgecentralityAAE.pdf", width = 5)
+plot(AAEbridge, include = "Bridge Strength")
+dev.off()
+```
+
+```{r Bridge AAEs highlighted, message = FALSE, warning = FALSE, collapse=TRUE, results='hide', fig.cap="Figure: The AAEs Network - Bridge"}
+Groups8 <- c(rep("2. AAEs",2),
+             rep("1. Bridge Nodes AAEs Cluster:
+                 3: Mental Abuse inside of Family,
+                 12: Trouble with Police,
+                 14: Educational Issues,
+                 21: Abuse by Romantic Partner", 1),
+             rep("2. AAEs",3), 
+             rep("1. Bridge Nodes AAEs Cluster:
+                 3: Mental Abuse inside of Family,
+                 12: Trouble with Police,
+                 14: Educational Issues,
+                 21: Abuse by Romantic Partner",2), #8
+             rep("2. AAEs",9), 
+             rep("1. Bridge Nodes AAEs Cluster:
+                 3: Mental Abuse inside of Family,
+                 12: Trouble with Police,
+                 14: Educational Issues,
+                 21: Abuse by Romantic Partner",1), #18  
+             rep("2. AAEs",5), #23
+             rep("4. Mental Health & Wellbeing",1),              
+             rep("3. Bridge Nodes Mental Health Cluster:
+                 25: Depression,
+                 27: Alcohol Use Disorder,
+                 28: Drug Use,
+                 30: Life Satisfaction",1), 
+             rep("4. Mental Health & Wellbeing",1), 
+             rep("3. Bridge Nodes Mental Health Cluster:
+                 25: Depression,
+                 27: Alcohol Use Disorder,
+                 28: Drug Use,
+                 30: Life Satisfaction",2), 
+             rep("4. Mental Health & Wellbeing",1), 
+             rep("3. Bridge Nodes Mental Health Cluster:
+                 25: Depression,
+                 27: Alcohol Use Disorder,
+                 28: Drug Use,
+                 30: Life Satisfaction",1))
+
+plot(NetworkAAEMH, legend.cex = 0.3, groups = Groups8, posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 10, color = c("#440154FF","snow4","#21908CFF","snow3"),border.color = "white",border.width = 2, label.color = "white", vsize = 7,curve = 0.1, curveAll = T)
+```
+
+## Bootstrapping AAE Networks
+```{r bootstrapping AAE, cache=TRUE, message= FALSE}
+BNetworkAAEs<- bootnet(NetworkAAEMH, default = "ggmModSelect", nBoots = 2000, nCores = 8)
+```
+
+```{r bootstrapping AAE load}
+plot(BNetworkAAEs, order = "sample", labels = FALSE)
+```
+
+```{r stability, cache=TRUE, message=FALSE}
+B2NetworkAAE<- bootnet(NetworkAAEMH, default = "ggmModSelect", type = "case", nBoots = 2000, nCores = 8, statistics = c("edge", "strength", "betweenness", "closeness","expectedInfluence"))
+```
+
+```{r stability 2}
+plot(B2NetworkAAE, statistics = c("strength", "closeness","betweenness", "expectedInfluence"))
+corStabNetworkAAE<- corStability(B2NetworkAAE, cor = 0.7)
+```
+***
+
+# **Network Comparison**  
+
+Network Comparison Test (NCT) is a permutation test. The NCT estimates the network structure and calculates a metric that functions as the observed test statistic. Group membership  is multiple times rearranged via permutation, followed by a recalculation of the network structure and test statistic. This is resulting in a reference distribution. The NCT then  compares the first observed test statistic with this reference distribution, indicating whether the observed test statistic is significantly different. For network comparisons, please refer to [Borkulo et al. (2017)](https://www.researchgate.net/publication/314750838_Comparing_network_structures_on_three_aspects_A_permutation_test).  
+
+```{r Direct Network Comparison ACE & AAE, collapse=TRUE, message = FALSE, fig.cap="Figure: The ACEs/AAE networks"}
+#Adapt ACEs and AAEs to the same number of nodes and names
+ACEData2 <- data.frame(ACEData,SUBACE=rowMeans(ACEData[6:7])) #this adds x in front of the column names 
+ACEData3 <- ACEData2[, -c(6:7)]
+orderACEData <- c("X1","X2","X3","X4","X5","SUBACE","X8","X9","X10","X11","X12","X13","X14","X15","X16","X17")                                
+ACEData4 <- ACEData3[, orderACEData]
+colnames(ACEData4) <- c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16")
+
+nodeNamesCom <- c("Physical Abuse inside of Family","Physical Abuse outside of Family","Mental Abuse inside of Family", "Mental Abuse outside of Family", "Sexual Abuse", "Carer Substance Abuse", "Abuse of Mother", "Criminality of Carer", "Psychopathology of Carer", "Bipolar Disorder", "Depression", "Chronic Fatigue Syndrom","Alcohol Use Disorder","Drug Use", "Happiness","Life Satisfaction")
+Groups4 <- c(rep("ACEs",9),rep("Mental Health & Wellbeing",7))
+
+BNetworkACEModSelSmall<- estimateNetwork(ACEData4, default = "ggmModSelect", corMethod = "spearman")
+plot(BNetworkACEModSelSmall, groups = Groups4, layout = "circle", edge.labels = FALSE, edge.label.cex = 0.5, edge.label.color = "black", GLratio = 2.5, nodeNames = nodeNamesCom, legend.cex = 0.4, layoutOffset = -0.05,vsize = 4.5, label.cex = 2, curve = 0.3, curveAll = T, edge.label.position = 0.5, posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 8, color = c("#5DC863FF", "#9FDA3AFF"), border.color = "white",border.width = 2, label.color = "white")
+centralityPlot(BNetworkACEModSelSmall, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+#Adapt AAEs
+AAEDataSmallB <- dplyr::select(FinalData, 10:18,33:39)
+colnames(AAEDataSmallB) <- c("9","1","2","3","4","5","6","7","8","10","11","12","13","14","15","16")
+order2 <- c("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16")                                                                 
+AAEDataSmall <- AAEDataSmallB[, order2]
+Groups3 <- c(rep("AAEs",9),rep("Mental Health & Wellbeing",7)) 
+
+BNetworkAAEModSelSmall<- estimateNetwork(AAEDataSmall, default = "ggmModSelect", corMethod = "spearman")
+plot(BNetworkAAEModSelSmall, groups = Groups3, layout = "circle",edge.labels = FALSE, edge.label.cex = 0.5, edge.label.color = "black", GLratio = 2.5, nodeNames = nodeNamesCom, legend.cex = 0.4, layoutOffset = -0.05,vsize = 4.5, label.cex = 2, curve = 0.3, curveAll = T, edge.label.position = 0.5, posCol = "gray25", negCol = "grey", negDashed = TRUE, fade = FALSE, esize = 8, color = c("#440154FF", "#21908CFF"), border.color = "white",border.width = 2, label.color = "white")
+centralityPlot(BNetworkAAEModSelSmall, include = c("Strength", "Closeness","Betweenness","ExpectedInfluence"))
+```
+
+```{r network comparison, cache=TRUE, message= FALSE}
+NetworkCom <- NCT(BNetworkACEModSelSmall, BNetworkAAEModSelSmall, it=2000, binary.data=FALSE, weighted=TRUE, test.edges=FALSE, edges="ALL",paired=TRUE)
+```
+
+```{r plot network comparison, message= FALSE, collapse=TRUE, fig.show='hide'}
+summary(NetworkCom)
+#Network structure invariance test
+plot(NetworkCom, what="network")
+#Global strength invariance test
+plot(NetworkCom, what="strength")
+#Edge invariance test
+plot(NetworkCom, what="edge")
+```
+***
+
+# **Shortest & Direct Pathways**  
+We computed path diagrams in childhood and adolescence based on the shortest pathway analysis. For more information, please refer to [Fritz et al. (2019)](https://bmcmedicine.biomedcentral.com/articles/10.1186/s12916-019-1430-6) and [Isvoranu et al. (2020)](https://pubmed.ncbi.nlm.nih.gov/30867074/).  
+
+```{r shortest & direct pathways 1, collapse=TRUE, message = FALSE, fig.show='hide'}
+ACEData5 <- dplyr::select(ACEData4,1:9,14)
+ACEData5B <- dplyr::select(ACEData4,1:9,11)
+AAEDataSmallC <- dplyr::select(AAEDataSmall,1:9,11)
+AAEDataSmallCB <- dplyr::select(AAEDataSmall,1:9,14)
+
+ACECorMat <- cor(ACEData5, use = "pairwise.complete.obs")
+AAEcorMat <- cor(AAEDataSmallC, use = "pairwise.complete.obs")
+ACECorMat2 <- cor(ACEData5B, use = "pairwise.complete.obs")
+AAEcorMat2 <- cor(AAEDataSmallCB, use = "pairwise.complete.obs")
+
+ACEGraph <- qgraph(ACECorMat, graph = "glasso", layout = "spring", tuning = 0.25, sampleSize = nrow(ACEData4), minimum = 0,cut = 0.15, maximum = 1, details = TRUE, esize = 20, posCol = "gray25", negCol = "grey", fade = FALSE, esize = 8, color = c("#5DC863FF"), border.color = "white",border.width = 2, label.color = "white")
+
+ACEGraph2<- qgraph(ACECorMat2, graph = "glasso", layout = "spring", tuning = 0.25, sampleSize = nrow(ACEData4), minimum = 0,cut = 0.15, maximum = 1, details = TRUE, esize = 20, posCol = "gray25", negCol = "grey", fade = FALSE, esize = 8, color = c("#5DC863FF"), border.color = "white",border.width = 2, label.color = "white")
+
+AAEGraph <- qgraph(AAEcorMat, graph = "glasso", layout = "spring", tuning = 0.25, sampleSize = nrow(AAEDataSmall), minimum = 0, cut = 0.15, maximum = 1, details = TRUE, esize = 20,posCol = "gray25", negCol = "grey", fade = FALSE, esize = 8, color = c("#21908CFF"), border.color = "white",border.width = 2, label.color = "white")
+
+AAEGraph2 <- qgraph(AAEcorMat2, graph = "glasso", layout = "spring", tuning = 0.25, sampleSize = nrow(AAEDataSmall), minimum = 0, cut = 0.15, maximum = 1, details = TRUE, esize = 20,posCol = "gray25", negCol = "grey", fade = FALSE, esize = 8, color = c("#21908CFF"), border.color = "white",border.width = 2, label.color = "white")
+
+pathways(ACEGraph, from = c(1,2,3,4,5,6,7,8,9), to = c(10))
+pathways(AAEGraph, from = c(1,2,3,4,5,6,7,8,9), to = c(10))
+```
+
+
+```{r shortest & direct pathways, collapse=TRUE, message = FALSE}
+flow(ACEGraph, from = c(10), horizontal = TRUE, equalize = TRUE, minCurve = 1, maxCurve = 4, unfadeFirst = FALSE, fade =TRUE, sampleSize=nrow(ACEData5)) 
+flow(ACEGraph2, from = c(10), horizontal = TRUE, equalize = TRUE, minCurve = 1, maxCurve = 4, unfadeFirst = FALSE, fade =TRUE, sampleSize=nrow(ACEData5)) 
+flow(AAEGraph, from = c(10), horizontal = TRUE, equalize = TRUE, minCurve = 1, maxCurve = 4, unfadeFirst = FALSE, fade =TRUE, sampleSize=nrow(AAEDataSmallC))
+flow(AAEGraph2, from = c(10), horizontal = TRUE, equalize = TRUE, minCurve = 1, maxCurve = 4, unfadeFirst = FALSE, fade =TRUE, sampleSize=nrow(AAEDataSmallC))
+```  
+  
+***  
+
+<div align="center">
+
+*If you have any questions, please don't hesitate to get in touch.*
+
+</div>  
+***
